@@ -550,10 +550,6 @@ int main(int argc, const char * argv[])
         drv->startMotor();
         // start scan...
         drv->startScan();
-        //set buffer
-        int c=0;
-        std::vector<Point2f> buffer_center[BUFFER_SIZE];
-        std::vector<std::vector<Point2f>> buffer_point[BUFFER_SIZE];
         // fetech result and print it out...
         while (1) 
         {  
@@ -577,7 +573,7 @@ int main(int argc, const char * argv[])
                     vp.push_back(std::pair<float,float>((nodes[pos].angle_q6_checkbit >> RPLIDAR_RESP_MEASUREMENT_ANGLE_SHIFT)/64.0f, 
                                                         nodes[pos].distance_q2/40.0f)); 
                 }
-                //filter out things not in area
+                //filter out things not in the area(necessary)
                 float h1=width_left[id_radar]/tan((float)(PI*(180.0f-vv_angles[id_radar][1])/180.0));
                 ThresholdData<float>(vp, vv_angles[id_radar], height[id_radar], width[id_radar], width_left[id_radar],h1);
                 
@@ -606,120 +602,26 @@ int main(int argc, const char * argv[])
 
                     vPoints.push_back(cv::Point2f(x,z));
                 }
-
-                //
-                int class_count = 0;
-                //how many point each object contains
-                std::vector<int> v_per_class_count;
-                //flag
-                std::vector<int> vb;
-                for(int i=0;i<vPoints.size();++i)
+                std::cout<<vPoints.size()<<std::endl;
+                for(int i=0; i<vPoints.size(); i++)
                 {
-                    vb.push_back(-1);
+                    float x = vPoints[i].x;
+                    float z = vPoints[i].y;
+                    std::cout<<"("<<x<<","<<z<<")"<<std::endl;
                 }
-                //detect nothing
-                if(vPoints.size() == 0)
-                {
-                    continue;
-                }
-                //only 1 point
-                else if(vPoints.size() == 1)
-                {
-                    vb[0] = 0;
-                    class_count = 1;
-                }
-                //classification based on CLUSTER_DISTANCE
-                else
-                {
-                    for(int i=0; i<vPoints.size()-1 ; ++i)
-                    { 
-                        if(vb[i] == -1)
-                            vb[i] = class_count;
-                        cv::Point2f pts = vPoints[i] - vPoints[i+1];
-                        if( (pts.x*pts.x + pts.y*pts.y) < (float)CLUSTER_DISTANCE*(float)CLUSTER_DISTANCE  )
-                        {
-                            vb[i+1] = vb[i];
-                        }
-                        else 
-                        {
-                            vb[i+1] = ++class_count;
-                        }
-                    }
-                    class_count++;
-                }
-                //center of each object
-                std::vector<cv::Point2f> vPoints_cluster;
-                int class_total = class_count;
-                int per_counts = 0;
-                class_count = 0;
-                cv::Point2f pt_sum(0.0,0.0);
-                //find center of each object
-                for(int i=0; i<vPoints.size(); ++i)
-                {
-                    if(vb[i] == class_count)
-                    {
-                        pt_sum += vPoints[i];
-                        per_counts++;
-                    }
-                    else if(vb[i] != class_count)
-                    {
-                        pt_sum.x /= per_counts;
-                        pt_sum.y /= per_counts;
-                        vPoints_cluster.push_back(pt_sum);
-                        v_per_class_count.push_back(per_counts);
-
-                        pt_sum = vPoints[i];
-                        per_counts = 1;
-                        class_count++;
-                    }
-                    if(i == vPoints.size() - 1)
-                    {
-                        pt_sum.x /= per_counts;
-                        pt_sum.y /= per_counts;
-                        vPoints_cluster.push_back(pt_sum);
-                        v_per_class_count.push_back(per_counts);
-                        class_count++;
-                    }
-                    
-                }
-                //storage of different points in each object
-                std::vector<std::vector<cv::Point2f> > vpp(vPoints_cluster.size());
-                for(int i=0; i<vPoints.size(); ++i)
-                {
-                    std::cout<<i<<":"<<vPoints[i]<<","<<vb[i]<<std::endl;
-                    vpp[vb[i]].push_back(vPoints[i]);
-                }
-                /*
-                //Smooth 
-                std::vector<Point2f> tempcenter;
-                tempcenter=Smooth(c,buffer_center,buffer_point,vPoints_cluster,vpp);
-                vPoints_cluster.swap(tempcenter);
-                */
-                //std::cout<<"origin: ("<<vPoints_cluster[0].x<<","<<vPoints_cluster[0].y<<")  \nchanged:  ("<<buffer_center[c%BUFFER_SIZE][0].x<<","<<buffer_center[c%BUFFER_SIZE][0].y<<")"<<std::endl;
-                
-                /*
-                if(vPoints_cluster.size()>1)
-                    std::cout<<"origin: ("<<vPoints_cluster[1].x<<","<<vPoints_cluster[1].y<<")  \Nchanged:  ("<<buffer_center[c%BUFFER_SIZE][1].x<<","<<buffer_center[c%BUFFER_SIZE][1].y<<")"<<std::endl;
-                
-                */
-                //std::cout<< "high1:"<<height[id_radar]<<"    high2:"<<h1<<"     width"<<width[id_radar]<<"       wl:"<<width_left[id_radar]<<endl; 
-                
+                std::cout<<"---------------------------"<<std::endl;
                 //paint
-                Mat picture(300,300,CV_8UC3,Scalar(255,255,255)); 
-                circle(picture,Point(width_left[id_radar],0),10,Scalar(0,0,0));
+                Mat picture(600,600,CV_8UC3,Scalar(255,255,255)); 
+                //circle(picture,Point(width_left[id_radar],0),10,Scalar(0,0,0));
+                circle(picture,Point(200,200),10,Scalar(0,0,0));
+                /*
                 Point P0=Point(0,h1);
                 Point P2=Point(width[id_radar],height[id_radar]);
                 rectangle(picture,P0,P2,Scalar(0,0,0));
-                for(int i=0; i<vPoints_cluster.size(); i++)
+                */
+                for(int i=0; i<vPoints.size()-1; i++)
                 {
-                    if(v_per_class_count[i] < 2)
-                        continue;
-                    for(int j=0;j<vpp[i].size()-1;j++)
-                    {
-                        line(picture,Point(vpp[i][j].x+width_left[id_radar],vpp[i][j].y),Point(vpp[i][j+1].x+width_left[id_radar],vpp[i][j+1].y),Scalar(0,0,0));
-                    }
-                    
-                    
+                    line(picture,Point(vPoints[i].x+200,vPoints[i].y+200),Point(vPoints[i+1].x+200,vPoints[i+1].y+200),Scalar(0,0,0));  
                 }
                 imshow("picture",picture);
                 waitKey(0); 
@@ -729,6 +631,7 @@ int main(int argc, const char * argv[])
                 radar_results.id_radar = id_radar;
                 radar_results.time_stamp_sec = tv.tv_sec;
                 radar_results.time_stamp_usec = tv.tv_usec;
+                /*
                 int valid_count = 0;
                 for(int i=0; i<vPoints_cluster.size(); ++i)
                 {
@@ -767,7 +670,7 @@ int main(int argc, const char * argv[])
                    
                     valid_count++;
                 }
-
+                
                 std::cout<<"---------------------------"<<std::endl;
 
                 radar_results.nums_results = valid_count;            
@@ -785,9 +688,8 @@ int main(int argc, const char * argv[])
                 std::cout<<"process "<<id_p<<" exit..."<<std::endl;
                 break;   
                 }
+                */
             }  
-            c++;  
-        
         }
         drv->stop();
         drv->stopMotor();
