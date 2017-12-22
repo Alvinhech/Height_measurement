@@ -1,9 +1,9 @@
-/************************************************* 
-Copyright:nljz 
+/*************************************************
+Copyright:nljz
 Author: Alvin He
 Date:2017.12.21
 Description: when radar is in the right or left of the gate, calculate angles of each point
-**************************************************/  
+**************************************************/
 
 #include <iostream>
 #include <string>
@@ -14,15 +14,15 @@ Description: when radar is in the right or left of the gate, calculate angles of
 
 #define PI 3.1415926
 
-int main(int argc, const char * argv[]) 
+int main(int argc, const char * argv[])
 {
 
-    std::ifstream file_calib("cord.txt");
+    std::ifstream file_calib("radar_location.txt");
     if(!file_calib.is_open())
     {
         return -1;
     }
-    
+
     float height[3] = {0.0f};
     float width[3] = {0.0f};
     float width_left[3] = {0.0f};
@@ -60,12 +60,12 @@ int main(int argc, const char * argv[])
     }
 
     file_calib.close();
-   
 
-    std::ofstream file_output("CalbrationFile_Radar.txt");
+
+    std::ofstream file_output("new_angle.txt");
     if(!file_output.is_open())
     {
-        return -1;        
+        return -1;
     }
 
     for(int i=0;i<line_no;i++)
@@ -102,17 +102,17 @@ int main(int argc, const char * argv[])
         tmp = racks_pts[i][4] - racks_pts[i][1];
         float s1 = sqrt(tmp.x*tmp.x + tmp.y*tmp.y + tmp.z*tmp.z);
         //angle[1]
-        angle[1] = 180.0f - 180.0f*asin(width_left[i]/s1)/PI;
+        angle[1] = 180.0f*asin(width_left[i]/s1)/PI;
 
         tmp = racks_pts[i][4] - racks_pts[i][2];
         float s2 = sqrt(tmp.x*tmp.x + tmp.y*tmp.y + tmp.z*tmp.z); 
         //angle[2]]
-        angle[2] = 180.0f - 180.0f*asin((-width[i] + width_left[i])/s2)/PI;
+        angle[2] = 360.0f - 180.0f*asin((width[i] - width_left[i])/s2)/PI;
 
         tmp = racks_pts[i][4] - racks_pts[i][3];
         float s3 = sqrt(tmp.x*tmp.x + tmp.y*tmp.y + tmp.z*tmp.z);
         //angle[3]
-        angle[3] = 180.0f*acos(height[i]/s3)/PI;
+        angle[3] = 360.0f - 180.0f*acos(height[i]/s3)/PI;
         
         std::vector<float> vf(&angle[0],&angle[5]);
         vv_angles.push_back(vf);
@@ -126,8 +126,8 @@ int main(int argc, const char * argv[])
         file_output << racks_pts[i][4].x << " " << racks_pts[i][4].y << " " << racks_pts[i][4].z << " " << x_thea << std::endl;
 
     }
-    
- 
- 
+
+
+
     return 0;
 }

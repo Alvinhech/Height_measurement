@@ -61,7 +61,7 @@ template<typename T>
 void ThresholdData(std::vector<std::pair<T,T> > &data, std::vector<T>& angles, T& height, T& width, T& width_left, T& h1)
 {
     
-    T width_right = -width + width_left;
+    T width_right = width - width_left;
     T delt;
     if((T)PI < angles[4])
     {
@@ -75,21 +75,25 @@ void ThresholdData(std::vector<std::pair<T,T> > &data, std::vector<T>& angles, T
     for(int pos=0;pos<data.size();++pos)
     {
         T i= data[pos].first - delt; 
-        
-        if(i>=angles[3] && i<=angles[0])
+        if(i<=angles[0])
         {
-            if(data[pos].second * cos((T)(PI*i/180.0)) > height || data[pos].second * sin((T)(PI*i/180.0)) < width_right)
-                data[pos].second =  0.0;
+            data[pos].second =  data[pos].second > height/cos((T)(PI*i/180.0)) ? 0.0:data[pos].second;
+        }
+        else if(i>=angles[3])
+        {
+            data[pos].second = data[pos].second > height/cos((T)( (PI*((T)N_SIZE - i)/180.0) )) ? 0.0:data[pos].second;   
         }
         else if(i>angles[0] && i<angles[1])
         {
-            if(data[pos].second * sin((T)(PI*i/180.0)) < width_right || data[pos].second * sin((T)(PI*i/180.0)) > width_left)
-                 data[pos].second =  0.0;
+           data[pos].second = data[pos].second > width_left/sin((T) (PI*i/180.0)) ? 0.0:data[pos].second;   
         }
-        else if(i>angles[1] && i<angles[2])
+        else if(i>=angles[1] && i<=angles[2])
         {
-            if(data[pos].second * cos((T)(PI*(180.0-i)/180.0)) > h1 || data[pos].second * sin((T)(PI*(180.0-i)/180.0)) < width_left)
-                data[pos].second =  0.0;
+            data[pos].second = (T)0.0 ;
+        }
+        else if(i>angles[2] && i<angles[3])
+        {
+            data[pos].second = data[pos].second > width_right/sin((T)(PI*((T)N_SIZE - i)/180.0)) ? 0.0:data[pos].second;   
         }
     }
 }
@@ -275,7 +279,7 @@ int main(int argc, const char * argv[])
 {
   
     //std::ifstream file_calib("CalbrationFile_Radar.txt");
-    std::ifstream file_calib("test.txt");
+    std::ifstream file_calib("new_angle.txt");
     if(!file_calib.is_open())
     {
         return -1;
@@ -563,11 +567,10 @@ int main(int argc, const char * argv[])
             //std::cout << op_result;
             if (IS_OK(op_result)) 
             {
-                //printf("1\n");
                 std::vector<std::pair<float,float> > vp;
                 
                 drv->ascendScanData(nodes, count);
-               
+                //printf("%d\n", count);
                 for (int pos = 0; pos < (int)count ; ++pos) 
                 { 
                     vp.push_back(std::pair<float,float>((nodes[pos].angle_q6_checkbit >> RPLIDAR_RESP_MEASUREMENT_ANGLE_SHIFT)/64.0f, 
@@ -602,27 +605,42 @@ int main(int argc, const char * argv[])
 
                     vPoints.push_back(cv::Point2f(x,z));
                 }
+                if(vPoints.size()==0)
+                    continue;
                 std::cout<<vPoints.size()<<std::endl;
+                
+                
+                
+                //paint
+                Mat picture(300,300,CV_8UC3,Scalar(255,255,255)); 
+                //circle(picture,Point(width_left[id_radar],0),10,Scalar(0,0,0));
+                circle(picture,Point(width_left[id_radar],10),10,Scalar(0,0,0));
+                
+                Point P0=Point(0,h1+10);
+                Point P2=Point(width[id_radar],height[id_radar]+10);
+                rectangle(picture,P0,P2,Scalar(0,0,0));
                 for(int i=0; i<vPoints.size(); i++)
                 {
                     float x = vPoints[i].x;
                     float z = vPoints[i].y;
                     std::cout<<"("<<x<<","<<z<<")"<<std::endl;
+                    circle(picture,Point(x+width_left[id_radar],z+10),1,Scalar(0,0,0));
                 }
-                std::cout<<"---------------------------"<<std::endl;
-                //paint
-                Mat picture(600,600,CV_8UC3,Scalar(255,255,255)); 
-                //circle(picture,Point(width_left[id_radar],0),10,Scalar(0,0,0));
-                circle(picture,Point(200,200),10,Scalar(0,0,0));
                 /*
-                Point P0=Point(0,h1);
-                Point P2=Point(width[id_radar],height[id_radar]);
-                rectangle(picture,P0,P2,Scalar(0,0,0));
-                */
-                for(int i=0; i<vPoints.size()-1; i++)
+                if(vPoints[0].x>0)
+                    for(int i=0; i<vPoints.size()-1; i++)
+                        line(picture,Point(vPoints[i].x+width_left[id_radar],vPoints[i].y+10),Point(vPoints[i+1].x+width_left[id_radar],vPoints[i+1].y+10),Scalar(0,0,0));  
+
+                else
                 {
-                    line(picture,Point(vPoints[i].x+200,vPoints[i].y+200),Point(vPoints[i+1].x+200,vPoints[i+1].y+200),Scalar(0,0,0));  
+                    for(int i=0; i<vPoints.size()-1; i++)
+                    {
+                        if(vPoints[i].x*vPoints[i+1].x>0)
+                            line(picture,Point(vPoints[i].x+width_left[id_radar],vPoints[i].y+10),Point(vPoints[i+1].x+width_left[id_radar],vPoints[i+1].y+10),Scalar(0,0,0));  
+                    }
+                    line(picture,Point(vPoints[0].x+width_left[id_radar],vPoints[0].y+10),Point(vPoints.back().x+width_left[id_radar],vPoints.back().y+10),Scalar(0,0,0));  
                 }
+                */
                 imshow("picture",picture);
                 waitKey(0); 
                 
@@ -689,6 +707,7 @@ int main(int argc, const char * argv[])
                 break;   
                 }
                 */
+                std::cout<<"---------------------------"<<std::endl;
             }  
         }
         drv->stop();
