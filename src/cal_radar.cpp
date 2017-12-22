@@ -1,7 +1,7 @@
 /*************************************************
 Copyright:nljz
 Author: Alvin He
-Date:2017.12.21
+Date:2017.12.22
 Description: when radar is in the right or left of the gate, calculate angles of each point
 **************************************************/
 

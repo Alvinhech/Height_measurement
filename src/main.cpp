@@ -1,8 +1,8 @@
 /************************************************* 
 Copyright:nljz 
 Author: Alvin He
-Date:2017.12.21
-Description: when radar is in the right or left of the gate, calculate angles of each point
+Date:2017.12.22
+Description: when radar is in the right or left of the gate, run radar and get 2d coordinates
 **************************************************/  
 
 #include <stdio.h>
@@ -273,7 +273,24 @@ std::vector<Point2f> Smooth(int c,std::vector<Point2f> buffer_center[],std::vect
     return buffer_center[c%BUFFER_SIZE];
 }
 
-
+//save data for later usage
+void Save_data(string file_name,std::vector<cv::Point2f> vPoints)
+{
+    std::ofstream file_output(file_name,ios_base::app);
+    if(!file_output.is_open())
+    {
+         return -1;
+    }
+    file_output<<"---------------------------"<<std::endl;
+    file_output<<vPoints.size()<<std::endl;
+    for(int i=0; i<vPoints.size(); i++)
+    {
+        float x = vPoints[i].x;
+        float z = vPoints[i].y; 
+        file_output<<x<<" "<<z<<std::endl;
+    }
+    file_output.close();
+}
 
 int main(int argc, const char * argv[]) 
 {
@@ -557,7 +574,6 @@ int main(int argc, const char * argv[])
         // fetech result and print it out...
         while (1) 
         {  
-            //printf("1\n");
             rplidar_response_measurement_node_t nodes[N_SIZE*2];
             size_t  count = _countof(nodes);
              
@@ -605,7 +621,8 @@ int main(int argc, const char * argv[])
 
                     vPoints.push_back(cv::Point2f(x,z));
                 }
-                if(vPoints.size()==0)
+                //not enough points
+                if(vPoints.size()<30)
                     continue;
                 std::cout<<vPoints.size()<<std::endl;
                 
@@ -626,23 +643,11 @@ int main(int argc, const char * argv[])
                     std::cout<<"("<<x<<","<<z<<")"<<std::endl;
                     circle(picture,Point(x+width_left[id_radar],z+10),1,Scalar(0,0,0));
                 }
-                /*
-                if(vPoints[0].x>0)
-                    for(int i=0; i<vPoints.size()-1; i++)
-                        line(picture,Point(vPoints[i].x+width_left[id_radar],vPoints[i].y+10),Point(vPoints[i+1].x+width_left[id_radar],vPoints[i+1].y+10),Scalar(0,0,0));  
-
-                else
-                {
-                    for(int i=0; i<vPoints.size()-1; i++)
-                    {
-                        if(vPoints[i].x*vPoints[i+1].x>0)
-                            line(picture,Point(vPoints[i].x+width_left[id_radar],vPoints[i].y+10),Point(vPoints[i+1].x+width_left[id_radar],vPoints[i+1].y+10),Scalar(0,0,0));  
-                    }
-                    line(picture,Point(vPoints[0].x+width_left[id_radar],vPoints[0].y+10),Point(vPoints.back().x+width_left[id_radar],vPoints.back().y+10),Scalar(0,0,0));  
-                }
-                */
                 imshow("picture",picture);
                 waitKey(0); 
+
+                Save_data("saved_data",vPoints);
+
                 
                 //radar number, timeval, timezone
                 Radar_Results radar_results;
