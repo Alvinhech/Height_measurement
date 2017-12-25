@@ -5,55 +5,8 @@ Date:2017.12.22
 Description: when radar is in the right or left of the gate, run radar and get 2d coordinates
 **************************************************/  
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <assert.h>
-#include <sstream>
-#include <iostream>
-#include <string>
+#include "main.h"
 
-#include <zmq.hpp>
-#include "serialization.hpp"
-#include <opencv2/opencv.hpp>
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
-
-#include "rplidar.h" //RPLIDAR standard sdk, all-in-one header
-
-#ifndef _countof
-#define _countof(_Array) (int)(sizeof(_Array) / sizeof(_Array[0]))
-#endif
-
-#ifdef _WIN32
-#include <Windows.h>
-#define delay(x)   ::Sleep(x)
-#else
-#include <unistd.h>
-#include <sys/prctl.h>
-#include <sys/time.h>
-
-static inline void delay(_word_size_t ms)
-{
-    while (ms>=1000)
-    {
-        usleep(1000*1000);
-        ms-=1000;
-    };
-    if (ms!=0)
-        usleep(ms*1000);
-}
-#endif
-
-using namespace rp::standalone::rplidar;
-using namespace cv;
-
-
-#define CLUSTER_DISTANCE 21 
-#define PI 3.1415926
-#define N_SIZE 360 
-#define VIBRATION_DISTANCE 10
-#define BUFFER_SIZE 3
 /*
  * 过滤掉检测区域外目标数据，只保留进入检测区域内的数据
 */
@@ -624,30 +577,9 @@ int main(int argc, const char * argv[])
                 //not enough points
                 if(vPoints.size()<30)
                     continue;
-                std::cout<<vPoints.size()<<std::endl;
-                
-                
-                
-                //paint
-                Mat picture(300,300,CV_8UC3,Scalar(255,255,255)); 
-                //circle(picture,Point(width_left[id_radar],0),10,Scalar(0,0,0));
-                circle(picture,Point(width_left[id_radar],10),10,Scalar(0,0,0));
-                
-                Point P0=Point(0,h1+10);
-                Point P2=Point(width[id_radar],height[id_radar]+10);
-                rectangle(picture,P0,P2,Scalar(0,0,0));
-                for(int i=0; i<vPoints.size(); i++)
-                {
-                    float x = vPoints[i].x;
-                    float z = vPoints[i].y;
-                    std::cout<<"("<<x<<","<<z<<")"<<std::endl;
-                    circle(picture,Point(x+width_left[id_radar],z+10),1,Scalar(0,0,0));
-                }
-                imshow("picture",picture);
-                waitKey(0); 
-
-                Save_data("saved_data",vPoints);
-
+                //std::cout<<vPoints.size()<<std::endl;
+                float height_result=Get_Height(vPoints,height[id_radar], width[id_radar], width_left[id_radar],h1,vv_angles[id_radar]);
+                std::cout << height_result<< std::endl;
                 
                 //radar number, timeval, timezone
                 Radar_Results radar_results;
@@ -694,7 +626,7 @@ int main(int argc, const char * argv[])
                     valid_count++;
                 }
                 
-                std::cout<<"---------------------------"<<std::endl;
+                
 
                 radar_results.nums_results = valid_count;            
 
@@ -707,12 +639,8 @@ int main(int argc, const char * argv[])
 		        memcpy(message.data(), content.c_str() , content.size());
                 publisher.send(message);
             
-                if (ctrl_c_pressed){ 
-                std::cout<<"process "<<id_p<<" exit..."<<std::endl;
-                break;   
-                }
                 */
-                std::cout<<"---------------------------"<<std::endl;
+                //std::cout<<"---------------------------"<<std::endl;
             }  
         }
         drv->stop();
