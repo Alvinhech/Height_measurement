@@ -6,6 +6,7 @@
 #include <sstream>
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include <zmq.hpp>
 #include "serialization.hpp"
@@ -52,3 +53,7 @@ using namespace cv;
 #define BUFFER_SIZE 3
 
 extern float Get_Height(std::vector<cv::Point2f>, float, float, float, float,std::vector<float>);
+extern int find(std::vector<float> slopes);
+
+
+extern float Cluster(std::vector<float> buffer);

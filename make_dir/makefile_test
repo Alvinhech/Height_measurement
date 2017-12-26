@@ -4,8 +4,8 @@ CFLAGS= -Wall -std=c++11 -fpermissive
 
 LDFLAGS= -L. librplidar_sdk.a `pkg-config --libs $(LIBS)` -pthread -lzmq -lboost_serialization
 
-TARGET= run_radars 
-SRCS= ./src/main.cpp ./src/Get_Height.cpp ./src/K-means.cpp
+TARGET= test 
+SRCS= ./src/test.cpp ./src/Get_Height.cpp
 
 INC= -I ./include -I ./src
 OBJS= $(SRCS:.cpp=.o)

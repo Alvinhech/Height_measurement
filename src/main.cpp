@@ -525,8 +525,10 @@ int main(int argc, const char * argv[])
         // start scan...
         drv->startScan();
         // fetech result and print it out...
+        std::vector<float> buffer;
         while (1) 
-        {  
+        {
+            float final_result;  
             rplidar_response_measurement_node_t nodes[N_SIZE*2];
             size_t  count = _countof(nodes);
              
@@ -576,9 +578,24 @@ int main(int argc, const char * argv[])
                 }
                 //not enough points
                 if(vPoints.size()<30)
+                {
+                    //good sample
+                    if(buffer.size()>=10)
+                    {
+                        final_result=Cluster(buffer);
+                        std::cout << "result:\t"<<final_result<< std::endl;
+                        buffer.clear();
+                    }
+                    //bad sample
+                    else if(buffer.size()>0&&buffer.size()<10)
+                        buffer.clear();
+                    //std::cout << "size:\t"<<buffer.size()<<std::endl;
                     continue;
+
+                }
                 //std::cout<<vPoints.size()<<std::endl;
                 float height_result=Get_Height(vPoints,height[id_radar], width[id_radar], width_left[id_radar],h1,vv_angles[id_radar]);
+                buffer.push_back(height_result);
                 std::cout << height_result<< std::endl;
                 
                 //radar number, timeval, timezone
@@ -640,7 +657,7 @@ int main(int argc, const char * argv[])
                 publisher.send(message);
             
                 */
-                //std::cout<<"---------------------------"<<std::endl;
+               
             }  
         }
         drv->stop();
