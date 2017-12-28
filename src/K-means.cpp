@@ -23,6 +23,8 @@
 #include <unistd.h>
 #include <sys/prctl.h>
 #include <sys/time.h>
+#define VALID_NUM 3
+#define VALID_PER 0.300
 
 using namespace cv; 
 /* run this program using the console pauser or add your own getch, system("pause") or input loop */  
@@ -34,27 +36,54 @@ typedef struct Point{
         x = a;   
         cluster = c;  
     }  
-}point;  
+}point;
+
+struct HC{  
+    float height;    
+    int num;  
+    HC *pnext;
+      
+};  
 
 float squareDistance(point a,point b){  
     return (a.x-b.x)*(a.x-b.x);  
 }  
 
+void Sort(std::vector<point> &centroid, int *cs)
+{
+    int n=centroid.size();
+    for(int i=0;i<n-1;i++)
+    {
+        for(int j=0;j<n-1-i;j++)
+        {
+            if(centroid[j].x<centroid[j+1].x)
+            {
+                swap(centroid[j],centroid[j+1]);
+                int temp=cs[j];
+                cs[j]=cs[j+1];
+                cs[j+1]=temp;
+            }
+        }
+    }
+    return;
+}
+
 float k_means(std::vector<point> dataset,int k){  
     std::vector<point> centroid;
-    float temp_center[2]={0.0,0.0};  
+    std::vector<float> temp_center(k,0.0f);
     int n=1;  
     int len = dataset.size();  
     float delta;  
     srand((int)time(0));  
+    int cen = rand();
     //random select centroids  
     while(n<=k){  
-        int cen = rand()%len;  
-        point cp(dataset[cen].x,n);  
+        point cp(dataset[(cen+n)%len].x,n);  
         centroid.push_back(cp);  
         n++;  
     }
-  
+    //printf("%d\n", cen);
+    int *cs = new int[k];  
     while(1){  
   
         //update cluster for all the points  
@@ -76,7 +105,7 @@ float k_means(std::vector<point> dataset,int k){
             dataset[i].cluster = cur;  
         }  
         //update cluster centroids  
-        int *cs = new int[k];  
+        
         for(int i=0;i<k;i++) cs[i] = 0;  
         for(int i=0;i<k;i++){  
             centroid[i] = point(0,i+1);  
@@ -88,24 +117,111 @@ float k_means(std::vector<point> dataset,int k){
         for(int i=0;i<k;i++){  
             centroid[i].x /= cs[i];   
         }
-        //std::cout<<temp_center[0]<<"\t"<<temp_center[1]<<"\t"<<centroid[0].x<<"\t"<<centroid[1].x<<std::endl;
-        delta=abs(max(temp_center[0],temp_center[1])-max(centroid[0].x,centroid[1].x));
-        //printf("delta:\t%d\n", delta);
-        if(delta<1)
-            break;
-        temp_center[0]=  centroid[0].x;
-        temp_center[1]=  centroid[1].x;
+        delta=0;
+        for(int i=0;i<k;i++)
+        {
+            delta+=abs(temp_center[i]-centroid[i].x);
+        }
         /*
-        cout<<"time:"<<time<<endl;  
-        for(int i=0;i<k;i++){  
-            cout<<"x:"<<centroid[i].x<<"\tc:"<<centroid[i].cluster<<endl;  
-        } 
-        */    
-        //sleep(1000);
-  
-    }  
+        if(delta!=delta)
+            break;
+            */
+        //printf("delta:     %f\n", delta);
+        if(delta<0.1)
+            break;
+        for(int i=0,delta=0;i<k;i++)
+        {
+            temp_center[i]=  centroid[i].x;
+        }  
+    }
+
+    Sort(centroid,cs);
+    for(int i=0;i<k;i++) 
+        std::cout<<"x:"<<centroid[i].x<<"\tc:"<<centroid[i].cluster<<"\tcs:"<<cs[i]<<std::endl;
+    /*
+    centroid[0]=point(166.04,5);
+    centroid[1]=point(165.154,4);
+    centroid[2]=point(161.478,3);
+    centroid[3]=point(157.444,2);
+    centroid[4]=point(128.905,1);
+    cs[0]=1;
+    cs[1]=2;
+    cs[2]=9;
+    cs[3]=8;
+    cs[4]=1;
+*/
+
+
+    HC *head,*p,*q;
+
+    head=(struct HC*)malloc(sizeof(struct HC));
+    head->height=centroid[0].x;
+    head->num=cs[0];
+    p=head;
+    for(int i=1;i<centroid.size();i++)
+    {
+        q=(struct HC*)malloc(sizeof(struct HC));
+        q->height=centroid[i].x;
+        q->num=cs[i];
+        p->pnext=q;
+        p=q;
+    }
+    p->pnext=NULL;
+
+    p=head;
+    while(p->pnext!=NULL)
+    {
+        if(abs(p->height-(p->pnext)->height)<=10)
+        {
+            p->height=(p->height*p->num+(p->pnext)->height*(p->pnext)->num)/(p->num+(p->pnext)->num);
+            p->num+=(p->pnext)->num;
+            q=p->pnext;
+            p->pnext=(p->pnext)->pnext;
+            free(q);
+        }
+        else
+            p=p->pnext;
+    }
     
-    return max(centroid[0].x,centroid[1].x);  
+    p=head;
+    while(p!=NULL)
+    {
+        std::cout<<"x:"<<p->height<<"\tcs:"<<p->num<<std::endl;
+        p=p->pnext;
+    }
+    
+
+
+
+
+
+    
+    float max_h=0;
+    int max_n=0;
+    p=head;
+    while(p!=NULL)
+    {  
+        max_n=max(max_n,p->num);
+        p=p->pnext;
+    }
+    p=head;
+    while(p!=NULL)
+    {  
+        //std::cout<<"x:"<<centroid[i].x<<"\tc:"<<centroid[i].cluster<<"\tcs:"<<cs[i]<<std::endl;
+        if(p->num>=VALID_NUM && p->num>=max_n*VALID_PER)
+        {
+            max_h=p->height;
+            break;
+        }
+        p=p->pnext;
+
+    }
+    /*
+    std::cout<<"---------------------------"<<std::endl;
+    for(int i=0;i<dataset.size();i++)
+        std::cout<<"x:"<<dataset[i].x<<"\tc:"<<dataset[i].cluster<<std::endl;
+        */
+    return max_h;  
 
 //  cout<<endl;  
 //  for(int i=0;i<centroid.size();i++){  
@@ -118,5 +234,5 @@ float Cluster(std::vector<float> buffer)
     std::vector<point> dataset;
     for(int i=0;i<buffer.size();i++)
         dataset.push_back(point(buffer[i],0));
-    return k_means(dataset,2);   
+    return k_means(dataset,5);   
 }

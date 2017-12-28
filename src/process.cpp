@@ -1,63 +1,4 @@
-/*************************************************
-Copyright:nljz
-Author: Alvin He
-Date:2017.12.22
-Description: when radar is in the right or left of the gate, process and calculate height of people's shoulder
-**************************************************/
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <assert.h>
-#include <sstream>
-#include <iostream>
-#include <string>
-
-#include <zmq.hpp>
-#include "serialization.hpp"
-#include <opencv2/opencv.hpp>
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
-
-#include "rplidar.h" //RPLIDAR standard sdk, all-in-one header
-
-#ifndef _countof
-#define _countof(_Array) (int)(sizeof(_Array) / sizeof(_Array[0]))
-#endif
-
-#ifdef _WIN32
-#include <Windows.h>
-#define delay(x)   ::Sleep(x)
-#else
-#include <unistd.h>
-#include <sys/prctl.h>
-#include <sys/time.h>
-
-
-static inline void delay(_word_size_t ms)
-{
-    while (ms>=1000)
-    {
-        usleep(1000*1000);
-        ms-=1000;
-    };
-    if (ms!=0)
-        usleep(ms*1000);
-}
-#endif
-
-using namespace rp::standalone::rplidar;
-using namespace cv;
-
-
-#define CLUSTER_DISTANCE 21
-#define PI 3.1415926
-#define N_SIZE 360
-#define VIBRATION_DISTANCE 10
-#define BUFFER_SIZE 3
-#define H 5
-#define PERCENT 0.8
-#define SLOPE -2
+#include "main.h"
 
 int main()
 {
@@ -107,10 +48,18 @@ int main()
     float h1=width_left/tan((float)(PI*(v_angle[1])/180.0));
     //std::cout<< "high1:"<<height<<"    high2:"<<h1<<"     width:"<<width<<"       wl:"<<width_left<<endl;
 
+    for(int i=1;i<=28;i++)
+    {
 
+    stringstream ss;
+    string str;
+    ss<<i;
+    ss>>str;
+    string out=string("saved_data")+str;
+    
     ///////////////////////////////
     //get data
-    std::ifstream file_data("new_data");
+    std::ifstream file_data(out);
     if(!file_data.is_open())
     {
         return -1;
@@ -140,89 +89,20 @@ int main()
 	    }
 	    point.push_back(temp);
     }
-    //std::cout<<point.size()<<std::endl;  //153
-
-    ///////calculate slope
-    std::vector<float> results;
-    float k; //slope
-    //filtering
-    for(int i=0;i<point.size();i++)
-    {
-    	std::vector<Point2f> data;
-    	float max=width;
-    	for(int j=0;j<point[i].size();j++)
-    	{
-    		if(point[i][j].x<max)
-    			max=point[i][j].x;
-    	}
-    	max=H+width-width_left-max;
-    	for(int j=0;j<point[i].size();j++)
-    	{
-    		if(H+width-width_left-point[i][j].x>=max*PERCENT)
-    			data.push_back(point[i][j]);
-    	}
-
-    	std::vector<float> slopes;
-
-		//paint
-		Mat picture(300,300,CV_8UC3,Scalar(255,255,255));
-        circle(picture,Point(width_left,10),10,Scalar(0,0,0));
-
-        Point P0=Point(0,h1+10);
-        Point P2=Point(width,height+10);
-        rectangle(picture,P0,P2,Scalar(0,0,0));
-
-        for(int i=0; i<data.size(); i++)
-        {
-            float x = data[i].x;
-            float z = data[i].y;
-            //std::cout<<"("<<x<<","<<z<<")"<<std::endl;
-            circle(picture,Point(x+width_left,z+10),1,Scalar(0,0,0));
-        }
-
-
-
-
-        //calculate slope
-        for(int j=0;j<data.size()-1;j++)
-    	{
-    		k=(data[j+1].y-data[j].y)/(data[j+1].x-data[j].x);
-    		//std::cout<<k<<"\t";
-    		slopes.push_back(k);
-    	}
-    	//find center slope(represents shoulder)
-    	int front=0,rear=slopes.size()-1,flag=0;
-    	float height1,height2;
-    	for(int j=0;j<=slopes.size()-1;j++)
-    	{
-    		if(slopes[j]<=SLOPE&&flag==0)
-    		{
-    			front=j;
-    			flag=1;
-    		}
-    		if(slopes[j]>SLOPE&&flag==1)
-    		{
-    			rear=j;
-    			break;
-    		}
-
-
-    	}
-    	height1=data[front].x;
-    	height2=data[rear].x;
-    	line(picture,Point(height1+width_left,h1+10),Point(height1+width_left,height+10),Scalar(0,0,0));
-    	line(picture,Point(height2+width_left,h1+10),Point(height2+width_left,height+10),Scalar(0,0,0));
-
-
-		
-
-      	std::cout << "height(cm):"<<H+width-width_left-height1<<" 1-2(cm):" <<(height1-height2)<< std::endl;
-      	//std::cout<<"----------------------------------------"<<std::endl;
-      	imshow("picture",picture);
-      	waitKey(0);
-
+    if(point.size()<6)
+        continue;
+    std::vector<float> buffer;
+    srand((unsigned)time(NULL));  
+    for(int i=0;i<point.size();i++){
+        float height_result=0.1*rand() / double(RAND_MAX)+Get_Height(point[i],height, width, width_left,h1,v_angle);
+        buffer.push_back(height_result);
+        //std::cout << height_result<< std::endl;
     }
-
-
+    
+        float final_result=Cluster(buffer);
+        std::cout << "result:\t"<<final_result<< std::endl;
+        //sleep(1);
+    
+    }
     return 0;
 }

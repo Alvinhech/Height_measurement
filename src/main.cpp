@@ -135,101 +135,17 @@ void ctrlc(int)
     ctrl_c_pressed = true;
 }
 
-//k
-std::vector<Point2f> Smooth(int c,std::vector<Point2f> buffer_center[],std::vector<std::vector<Point2f>> buffer_point[],std::vector<Point2f> &center,std::vector<std::vector<Point2f>> &cluster)
-{
-    
-    int i,j,k,x,y;
-    std::vector<Point2f> samecenter[center.size()];
-    std::vector<int> distance[center.size()];
-    std::vector<Point2f> tempcenter;
-    if(c>=BUFFER_SIZE-1)
-    {
-        
-        //for every center, get the corresponding points.
-        for(i=0;i<center.size();i++)
-        {
-            //for every buffercluster
-            for(j=1;j<BUFFER_SIZE;j++)
-            {
-                //every point
-                for(k=0;k<buffer_center[(c+j)%BUFFER_SIZE].size();k++)
-                {
-                    x=buffer_center[(c+j)%BUFFER_SIZE][k].x-center[i].x;
-                    y=buffer_center[(c+j)%BUFFER_SIZE][k].y-center[i].y;
-                    //is the same point
-                    if(x*x+y*y<=VIBRATION_DISTANCE*VIBRATION_DISTANCE)
-                    {
-                        samecenter[i].push_back(buffer_center[(c+j)%BUFFER_SIZE][k]);
-                        distance[i].push_back(j);
-                    }
-                    
-                }
-            }
-            Point2f temppoint(0,0);
-            int sum=0;
-            //average
-            for(j=0;j<samecenter[i].size();j++)
-            {
-                sum+=distance[i][j];
-                temppoint.x+=distance[i][j]*samecenter[i][j].x;
-                temppoint.y+=distance[i][j]*samecenter[i][j].y;
-            }
-            temppoint.x=(temppoint.x+BUFFER_SIZE*center[i].x)/(sum+BUFFER_SIZE);
-            temppoint.y=(temppoint.y+BUFFER_SIZE*center[i].y)/(sum+BUFFER_SIZE);
-            tempcenter.push_back(temppoint);
 
-        }
-        buffer_center[c%BUFFER_SIZE]=tempcenter;
-    }
-    else if(c>0)
-    {
-        for(int i=0;i<center.size();i++)
-        {
-            for(j=1;j<=c;j++)
-            {
-                //every point
-                for(k=0;k<buffer_center[(c-j)%BUFFER_SIZE].size();k++)
-                {
-                    x=buffer_center[(c-j)%BUFFER_SIZE][k].x-center[i].x;
-                    y=buffer_center[(c-j)%BUFFER_SIZE][k].y-center[i].y;
-                    //is the same point
-                    if(x*x+y*y<=VIBRATION_DISTANCE*VIBRATION_DISTANCE)
-                    {
-                        samecenter[i].push_back(buffer_center[(c-j)%BUFFER_SIZE][k]);
-                        distance[i].push_back(c+1-j);
-                    }
-                    
-                }
-            }
-            Point2f temppoint;
-            int sum=0;
-            //average
-            for(j=0;j<samecenter[i].size();j++)
-            {
-                sum+=distance[i][j];
-                temppoint.x+=distance[i][j]*samecenter[i][j].x;
-                temppoint.y+=distance[i][j]*samecenter[i][j].y;
-            }
-            temppoint.x=(temppoint.x+(c+1)*center[i].x)/(sum+c+1);
-            temppoint.y=(temppoint.y+(c+1)*center[i].y)/(sum+c+1);
-            tempcenter.push_back(temppoint);
-        }
-        buffer_center[c%BUFFER_SIZE]=tempcenter;
-    }
-    else if(c==0)
-    {
-        buffer_center[c%BUFFER_SIZE]=center;
-        
-    }
-    buffer_point[c%BUFFER_SIZE]=cluster;
-    return buffer_center[c%BUFFER_SIZE];
-}
 
 //save data for later usage
 void Save_data(string file_name,std::vector<cv::Point2f> vPoints)
 {
-    std::ofstream file_output(file_name,ios_base::app);
+    stringstream ss;
+    string str;
+    ss<<save_filename;
+    ss>>str;
+    std::ofstream file_output(file_name+str,ios_base::app);
+    //std::ofstream file_output(file_name);
     if(!file_output.is_open())
     {
          return -1;
@@ -526,6 +442,7 @@ int main(int argc, const char * argv[])
         drv->startScan();
         // fetech result and print it out...
         std::vector<float> buffer;
+        srand((unsigned)time(NULL));
         while (1) 
         {
             float final_result;  
@@ -535,13 +452,13 @@ int main(int argc, const char * argv[])
             op_result = drv->grabScanData(nodes, count);
 
             gettimeofday(&tv,&tz);
-            //std::cout << op_result;
+            //std::cout << IS_OK(op_result);
             if (IS_OK(op_result)) 
             {
                 std::vector<std::pair<float,float> > vp;
                 
                 drv->ascendScanData(nodes, count);
-                //printf("%d\n", count);
+                //printf("\t%d\n", count);
                 for (int pos = 0; pos < (int)count ; ++pos) 
                 { 
                     vp.push_back(std::pair<float,float>((nodes[pos].angle_q6_checkbit >> RPLIDAR_RESP_MEASUREMENT_ANGLE_SHIFT)/64.0f, 
@@ -577,33 +494,38 @@ int main(int argc, const char * argv[])
                     vPoints.push_back(cv::Point2f(x,z));
                 }
                 //not enough points
-                if(vPoints.size()<30)
+                if(vPoints.size()<20)
                 {
                     //good sample
-                    if(buffer.size()>=10)
+                    if(buffer.size()>=BUFFER_SIZE)
                     {
                         final_result=Cluster(buffer);
                         std::cout << "result:\t"<<final_result<< std::endl;
-                        buffer.clear();
+                        std::vector<float> ().swap(buffer);
+                        save_filename++;
                     }
                     //bad sample
-                    else if(buffer.size()>0&&buffer.size()<10)
-                        buffer.clear();
+                    else if(buffer.size()>0&&buffer.size()<BUFFER_SIZE)
+                    {
+                        std::vector<float> ().swap(buffer);
+                        save_filename++;
+                    }
                     //std::cout << "size:\t"<<buffer.size()<<std::endl;
                     continue;
 
                 }
+                Save_data("saved_data",vPoints);
                 //std::cout<<vPoints.size()<<std::endl;
-                float height_result=Get_Height(vPoints,height[id_radar], width[id_radar], width_left[id_radar],h1,vv_angles[id_radar]);
+                float height_result=0.1*rand() / double(RAND_MAX)+Get_Height(vPoints,height[id_radar], width[id_radar], width_left[id_radar],h1,vv_angles[id_radar]);
                 buffer.push_back(height_result);
-                std::cout << height_result<< std::endl;
-                
+                std::cout << height_result<<"\t"<<vPoints.size()<< std::endl;
+                /*
                 //radar number, timeval, timezone
                 Radar_Results radar_results;
                 radar_results.id_radar = id_radar;
                 radar_results.time_stamp_sec = tv.tv_sec;
                 radar_results.time_stamp_usec = tv.tv_usec;
-                /*
+                
                 int valid_count = 0;
                 for(int i=0; i<vPoints_cluster.size(); ++i)
                 {

@@ -50,10 +50,13 @@ using namespace cv;
 #define PI 3.1415926
 #define N_SIZE 360
 #define VIBRATION_DISTANCE 10
-#define BUFFER_SIZE 3
+#define BUFFER_SIZE 6
+
+
+int save_filename=9;
 
 extern float Get_Height(std::vector<cv::Point2f>, float, float, float, float,std::vector<float>);
 extern int find(std::vector<float> slopes);
 
 
-extern float Cluster(std::vector<float> buffer);
+extern float Cluster(std::vector<float>);

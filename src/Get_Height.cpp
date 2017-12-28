@@ -30,14 +30,13 @@ using namespace cv;
 #define PI 3.1415926    
 #define H 5
 #define PERCENT 0.70
-#define SLOPE -2
-int find(std::vector<float> slopes)
+#define SLOPE -1.2
+void find(std::vector<float> slopes,int &front, int &rear)
 {
-    int front=0,rear=slopes.size()-1,flag=0;
+    int flag=0;
     int i=0;
 
-    while(i<slopes.size()-1)
-    {    
+        
         for(int j=i;j<=slopes.size()-2;j++,i++)
         {
             if(slopes[j]<=SLOPE&&slopes[j+1]<=SLOPE&&flag==0)
@@ -55,8 +54,8 @@ int find(std::vector<float> slopes)
 
         }
         
-    }
-    return front;
+    
+    return;
 
 }
 float print_Height(std::vector<cv::Point2f> data, float height, float width, float width_left, float h1)
@@ -71,12 +70,15 @@ float print_Height(std::vector<cv::Point2f> data, float height, float width, flo
             slopes.push_back(k);
         }
         //find center slope(represents shoulder)
-        
+        int front=0,rear=slopes.size();
         float height1,height2;
-        
-        height1=data[find(slopes)].x;
-        //height2=data[rear].x;
-        return H+width-width_left-height1;
+        find(slopes,front,rear);
+        height1=data[front+1].x;
+        height2=data[rear].x;
+        if(abs(height2-height1)<10)
+            return H+width-width_left-height2;
+        else
+            return H+width-width_left-height1;
 }
 
 void save_slope(std::vector<float> slopes)
@@ -128,19 +130,21 @@ float paint_Height(std::vector<cv::Point2f> data, float height, float width, flo
         }
         //find center slope(represents shoulder)
         //save_slope(slopes);
+        int front=0,rear=slopes.size();
         float height1,height2;
-        
-        height1=data[find(slopes)].x;
-
-        
-        //height2=data[rear].x;
+        find(slopes,front,rear);
+        height1=data[front+1].x;
+        height2=data[rear].x;
         line(picture,Point(height1+width_left,h1+10),Point(height1+width_left,height+10),Scalar(0,0,0));
-        //line(picture,Point(height2+width_left,h1+10),Point(height2+width_left,height+10),Scalar(0,0,0));
-
+        //line(picture,Point((height1+height2)/2+width_left,h1+10),Point((height1+height2)/2+width_left,height+10),Scalar(0,0,0));
+        line(picture,Point(height2+width_left,h1+10),Point(height2+width_left,height+10),Scalar(0,0,0));
+        //std::cout << H+width-width_left-height1<< std::endl;
 
         
-
-        ///std::cout << "height(cm):"<<H+width-width_left-height1<<" 1-2(cm):" <<(height1-height2)<< std::endl;
+        if(abs(height2-height1)<10)
+            std::cout << "height(cm):"<<H+width-width_left-height2<<" 1-2(cm):" <<(height1-height2)<< std::endl;
+        else
+            std::cout << "height(cm):"<<H+width-width_left-height1<<" 1-2(cm):" <<(height1-height2)<< std::endl;
         //std::cout<<"----------------------------------------"<<std::endl;
         imshow("picture",picture);
         waitKey(0);
@@ -148,22 +152,14 @@ float paint_Height(std::vector<cv::Point2f> data, float height, float width, flo
     
 
 
-    return H+width-width_left-height1;
+        if(abs(height2-height1)<10)
+            return H+width-width_left-height2;
+        else
+            return H+width-width_left-height1;
 }
 
 float Get_Height(std::vector<cv::Point2f> point, float height, float width, float width_left, float h1,std::vector<float> v_angle)
 {
-	
-
-    
-    cv::Point3f v_offset; //坐标变换平移向量集合
-    std::string vstr; //雷达序列号
-    int no_radar;
-    //std::cout<< "high1:"<<height<<"    high2:"<<h1<<"     width:"<<width<<"       wl:"<<width_left<<endl;
-
-
-    //filtering
-    
     	std::vector<Point2f> data;
     	float max=width;
     	for(int j=0;j<point.size();j++)
@@ -177,7 +173,8 @@ float Get_Height(std::vector<cv::Point2f> point, float height, float width, floa
     		if(H+width-width_left-point[j].x>=max*PERCENT)
     			data.push_back(point[j]);
     	}
+        
         return print_Height(data,height,width,width_left,h1);
-        //return paint_Height(data,height,width,width_left,h1);
+        return paint_Height(data,height,width,width_left,h1)+0.1*rand() / double(RAND_MAX);
     	
 }
